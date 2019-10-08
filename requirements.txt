@@ -1,0 +1,6 @@
+six
+defusedxml
+lxml
+pyconfig
+requests
+cryptography

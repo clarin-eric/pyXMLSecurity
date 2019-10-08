@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from setuptools import setup, find_packages
-import sys, os
+import sys
+import os
 from distutils import versionpredicate
 
 here = os.path.abspath(os.path.dirname(__file__))
@@ -8,10 +9,10 @@ README = open(os.path.join(here, 'README.rst')).read()
 NEWS = open(os.path.join(here, 'NEWS.txt')).read()
 
 
-version = '0.18dev0'
+version = '0.21dev1'
 
 install_requires = [
-    'defusedxml', 'lxml', 'pyconfig', 'requests'
+    'defusedxml', 'lxml', 'pyconfig', 'requests', 'cryptography', 'six'
 ]
 
 # Let some other project depend on 'xmlsec[PKCS11]'
@@ -41,7 +42,6 @@ setup(name='pyXMLSecurity',
     },
     zip_safe=False,
     install_requires=install_requires,
-    requires=install_requires,
     extras_require=extras_require,
     entry_points={
           'console_scripts': ['xmlsign=xmlsec.tools:sign_cmd','xmlverify=xmlsec.tools:verify_cmd']

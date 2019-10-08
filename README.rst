@@ -1,8 +1,8 @@
 python XML Security
 ===================
 
-.. image:: https://img.shields.io/travis/leifj/pyXMLSecurity.svg
-   :target: https://travis-ci.org/leifj/pyXMLSecurity
+.. image:: https://img.shields.io/travis/IdentityPython/pyXMLSecurity.svg
+   :target: https://travis-ci.org/IdentityPython/pyXMLSecurity
    :alt: Travis Build
 .. image:: https://img.shields.io/coveralls/leifj/pyXMLSecurity.svg
    :target: https://coveralls.io/r/leifj/pyXMLSecurity?branch=master
@@ -24,11 +24,13 @@ python XML Security
    :alt: PyPI Version
 
 This is a python implementation of XML-Security - XML-DSIG only right now. There are no
-dependencies except lxml currently.
+dependencies except lxml and pyca/cryptography currently.
 
 This code was inspired by https://github.com/andrewdyates/xmldsig (this implementation is
-a refactor and extension of that implementation) and includes a pure-python RSA implementation
-https://github.com/andrewdyates/rsa_x509_pem by and with permission from Andrew Yates.
+a refactor and extension of that implementation) and in former versions used to include a
+pure-python RSA implementation https://github.com/andrewdyates/rsa_x509_pem by and with
+permission from Andrew Yates. Cryptographic primitives are now provided by
+pyca/cryptography (https://cryptography.io).
 
 In order to sign with a PKCS#11-module you need to install pykcs11 (http://www.bit4id.org/pykcs11/)
 
@@ -36,8 +38,7 @@ This package is available under the NORDUnet BSD license (cf LICENSE.txt)
 
 Limitations:
 
-- only support for enveloped signatures
-- only support for RSA-SHA1 signatures
+- only support for RSA-SHA1/256/512 signatures with PKCS1.5 padding
 - no encryption support
 
 Some of those limitations might be addressed. Patches and pull-requests are most welcome!

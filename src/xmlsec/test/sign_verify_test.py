@@ -6,7 +6,9 @@ import unittest
 import xmlsec
 import pkg_resources
 from xmlsec.test.case import load_test_data
-from xmlsec import constants
+from xmlsec import constants, utils
+import six
+import base64
 from . import find_alts, run_cmd
 import tempfile
 
@@ -27,8 +29,11 @@ def _get_all_signatures(t):
     for sig in t.findall(".//{%s}Signature" % xmlsec.NS['ds']):
         sv = sig.findtext(".//{%s}SignatureValue" % xmlsec.NS['ds'])
         assert sv is not None
-        # base64-dance to normalize newlines
-        res.append(sv.decode('base64').encode('base64'))
+        # normalize newlines
+        sv = ''.join(sv.split('\n'))
+        if not isinstance(sv, six.binary_type):
+            sv = bytes(sv, encoding='utf-8')
+        res.append(sv)
     return res
 
 
@@ -53,7 +58,8 @@ class TestSignVerifyXmlSec1(unittest.TestCase):
                 res = xmlsec.verify(signed, self.public_keyspec)
                 self.assertTrue(res)
                 with open(self.tmpf.name, "w") as fd:
-                    fd.write(etree.tostring(signed))
+                    xml_str = utils.etree_to_string(signed)
+                    fd.write(xml_str)
 
                 run_cmd([XMLSEC1,
                          '--verify',
@@ -80,6 +86,7 @@ class TestVerify(unittest.TestCase):
 
     def test_verify_all(self):
         for case in self.cases.values():
+            print(str(case))
             public_keyspec = os.path.join(self.resource_dir, case.name, "signer.crt")
             res = xmlsec.verify(case.as_etree("in.xml"), public_keyspec)
             self.assertTrue(res)
@@ -181,8 +188,8 @@ class TestSignVerify(unittest.TestCase):
         expected_sv = _get_all_signatures(expected)
         signed_sv = _get_all_signatures(signed)
 
-        print "Signed   SignatureValue: %s" % (repr(signed_sv))
-        print "Expected SignatureValue: %s" % (repr(expected_sv))
+        print("Signed   SignatureValue: %s" % (repr(signed_sv)))
+        print("Expected SignatureValue: %s" % (repr(expected_sv)))
 
         self.assertEqual(signed_sv, expected_sv)
 
@@ -202,10 +209,25 @@ class TestSignVerify(unittest.TestCase):
         expected_sv = _get_all_signatures(expected)
         signed_sv = _get_all_signatures(signed)
 
-        print "Signed   SignatureValue: %s" % (repr(signed_sv))
-        print "Expected SignatureValue: %s" % (repr(expected_sv))
+        print("Signed   SignatureValue: %s" % (repr(signed_sv)))
+        print("Expected SignatureValue: %s" % (repr(expected_sv)))
 
         self.assertEqual(signed_sv, expected_sv)
+
+    def test_duo_vuln_attack(self):
+        """
+        Test https://duo.com/blog/duo-finds-saml-vulnerabilities-affecting-multiple-implementations
+        """
+        case = self.cases['SAML_assertion_sha256']
+        print("XML input :\n{}\n\n".format(case.as_buf('in.xml')))
+
+        signed = xmlsec.sign(case.as_etree('in.xml'),
+                             key_spec=self.private_keyspec,
+                             cert_spec=self.public_keyspec)
+        refs = xmlsec.verified(signed, self.public_keyspec)
+        self.assertTrue(len(refs) == 1)
+        print("verified XML: %s" % etree.tostring(refs[0]))
+        assert('evil' not in [x.text for x in refs[0].findall(".//{%s}AttributeValue" % 'urn:oasis:names:tc:SAML:2.0:assertion')])
 
     def test_verify_SAML_assertion1(self):
         """
@@ -226,11 +248,12 @@ class TestSignVerify(unittest.TestCase):
 
         # modify the givenName in the XML and make sure the signature
         # does NOT validate anymore
-        case.data['out.xml'] = case.data['out.xml'].replace('>Bar<', '>Malory<')
+        case.data['out.xml'] = case.data['out.xml'].replace(b'>Bar<', b'>Malory<')
 
         print("XML input :\n{}\n\n".format(case.as_buf('out.xml')))
         with self.assertRaises(xmlsec.XMLSigException):
-            xmlsec.verify(case.as_etree('out.xml'), self.public_keyspec)
+            res = xmlsec.verify(case.as_etree('out.xml'), self.public_keyspec)
+            print(res)
 
     def test_sign_xades(self):
         """
@@ -252,7 +275,7 @@ class TestSignVerify(unittest.TestCase):
         signed = xmlsec.sign(case.as_etree('in.xml'),
                              key_spec=self.private_keyspec,
                              cert_spec=self.public_keyspec)
-        print etree.tostring(signed)
+        print(etree.tostring(signed))
 
     def test_mm2(self):
         case = self.cases['mm2']
@@ -269,17 +292,17 @@ class TestSignVerify(unittest.TestCase):
 
         expected = case.as_etree('out.xml')
 
-        print " --- Expected"
-        print etree.tostring(expected)
-        print " --- Actual"
-        print etree.tostring(signed)
+        print(" --- Expected")
+        print(etree.tostring(expected))
+        print(" --- Actual")
+        print(etree.tostring(signed))
 
         # extract 'SignatureValue's
         expected_sv = _get_all_signatures(expected)
         signed_sv = _get_all_signatures(signed)
 
-        print "Signed   SignatureValue: %s" % (repr(signed_sv))
-        print "Expected SignatureValue: %s" % (repr(expected_sv))
+        print("Signed   SignatureValue: %s" % (repr(signed_sv)))
+        print("Expected SignatureValue: %s" % (repr(expected_sv)))
 
         self.assertEqual(signed_sv, expected_sv)
 
@@ -292,17 +315,17 @@ class TestSignVerify(unittest.TestCase):
 
         expected = case.as_etree('out.xml')
 
-        print " --- Expected"
-        print etree.tostring(expected)
-        print " --- Actual"
-        print etree.tostring(signed)
+        print(" --- Expected")
+        print(etree.tostring(expected))
+        print(" --- Actual")
+        print(etree.tostring(signed))
 
         # extract 'SignatureValue's
         expected_sv = _get_all_signatures(expected)
         signed_sv = _get_all_signatures(signed)
 
-        print "Signed   SignatureValue: %s" % (repr(signed_sv))
-        print "Expected SignatureValue: %s" % (repr(expected_sv))
+        print("Signed   SignatureValue: %s" % (repr(signed_sv)))
+        print("Expected SignatureValue: %s" % (repr(expected_sv)))
 
         self.assertEqual(signed_sv, expected_sv)
 
@@ -315,17 +338,17 @@ class TestSignVerify(unittest.TestCase):
 
         expected = case.as_etree('out.xml')
 
-        print " --- Expected"
-        print etree.tostring(expected)
-        print " --- Actual"
-        print etree.tostring(signed)
+        print(" --- Expected")
+        print(etree.tostring(expected))
+        print(" --- Actual")
+        print(etree.tostring(signed))
 
         # extract 'SignatureValue's
         expected_sv = _get_all_signatures(expected)
         signed_sv = _get_all_signatures(signed)
 
-        print "Signed   SignatureValue: %s" % (repr(signed_sv))
-        print "Expected SignatureValue: %s" % (repr(expected_sv))
+        print("Signed   SignatureValue: %s" % (repr(signed_sv)))
+        print("Expected SignatureValue: %s" % (repr(expected_sv)))
 
         self.assertEqual(signed_sv, expected_sv)
 
@@ -344,17 +367,17 @@ class TestSignVerify(unittest.TestCase):
 
         expected = case.as_etree('out.xml')
 
-        print " --- Expected"
-        print etree.tostring(expected)
-        print " --- Actual"
-        print etree.tostring(signed)
+        print(" --- Expected")
+        print(etree.tostring(expected))
+        print(" --- Actual")
+        print(etree.tostring(signed))
 
         # extract 'SignatureValue's
         expected_sv = _get_all_signatures(expected)
         signed_sv = _get_all_signatures(signed)
 
-        print "Signed   SignatureValue: %s" % (repr(signed_sv))
-        print "Expected SignatureValue: %s" % (repr(expected_sv))
+        print("Signed   SignatureValue: %s" % (repr(signed_sv)))
+        print("Expected SignatureValue: %s" % (repr(expected_sv)))
 
         self.assertEqual(signed_sv, expected_sv)
 
@@ -379,22 +402,22 @@ class TestSignVerify(unittest.TestCase):
         sig = t.find("./{%s}Signature" % xmlsec.NS['ds'])
         digest = sig.findtext('.//{%s}DigestValue' % xmlsec.NS['ds'])
 
-        print " --- Expected digest value"
-        print expected_digest
-        print " --- Actual digest value"
-        print digest
+        print(" --- Expected digest value")
+        print(expected_digest)
+        print(" --- Actual digest value")
+        print(digest)
 
-        print " --- Expected"
-        print etree.tostring(expected)
-        print " --- Actual"
-        print etree.tostring(signed)
+        print(" --- Expected")
+        print(etree.tostring(expected))
+        print(" --- Actual")
+        print(etree.tostring(signed))
 
         # extract 'SignatureValue's
         expected_sv = _get_all_signatures(expected)
         signed_sv = _get_all_signatures(signed)
 
-        print "Signed   SignatureValue: %s" % (repr(signed_sv))
-        print "Expected SignatureValue: %s" % (repr(expected_sv))
+        print("Signed   SignatureValue: %s" % (repr(signed_sv)))
+        print("Expected SignatureValue: %s" % (repr(expected_sv)))
 
         self.assertEquals(digest, expected_digest)
         self.assertEqual(signed_sv, expected_sv)
@@ -415,17 +438,17 @@ class TestSignVerify(unittest.TestCase):
 
         expected = case.as_etree('xmlsec1_out.xml')
 
-        print " --- Expected"
-        print etree.tostring(expected)
-        print " --- Actual"
-        print etree.tostring(signed)
+        print(" --- Expected")
+        print(etree.tostring(expected))
+        print(" --- Actual")
+        print(etree.tostring(signed))
 
         # extract 'SignatureValue's
         expected_sv = _get_all_signatures(expected)
         signed_sv = _get_all_signatures(signed)
 
-        print "Signed   SignatureValue: %s" % (repr(signed_sv))
-        print "Expected SignatureValue: %s" % (repr(expected_sv))
+        print("Signed   SignatureValue: %s" % (repr(signed_sv)))
+        print("Expected SignatureValue: %s" % (repr(expected_sv)))
 
 
 def main():

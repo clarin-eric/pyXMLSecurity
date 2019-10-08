@@ -7,8 +7,8 @@ __author__ = 'leifj'
 import os
 import pkg_resources
 from defusedxml import lxml
-import lxml.etree as etree
-from StringIO import StringIO
+from lxml import etree
+from six.moves import StringIO
 import xmlsec
 
 
@@ -27,6 +27,9 @@ class XMLTestData():
 
     def has_data(self, n):
         return n in self.data
+
+    def __str__(self):
+        return "Testcase {}/{}".format(self.base, self.name)
 
     def as_buf(self, n):
         assert n in self.data, XMLTestDataException("No data named %s in test case %s" % (n, self.name))

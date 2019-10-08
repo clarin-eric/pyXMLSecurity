@@ -32,10 +32,18 @@ def sign_cmd():
     args = None
     try:
         opts, args = getopt.getopt(sys.argv[1:], 'hk:c:o:r:',
-                                   ['help', 'key=', 'cert=', 'version', 'output=', 'loglevel=', 'logfile=', 'reference='])
-    except getopt.error, msg:
-        print msg
-        print __doc__
+                                   ['help',
+                                    'key=',
+                                    'cert=',
+                                    'xinclude',
+                                    'version',
+                                    'output=',
+                                    'loglevel=',
+                                    'logfile=',
+                                    'reference='])
+    except getopt.error as msg:
+        print(msg)
+        print(__doc__)
         sys.exit(2)
 
     output = None
@@ -44,12 +52,13 @@ def sign_cmd():
     reference = ""
     loglevel = logging.WARN
     logfile = None
+    do_xinclude = False
     for o, a in opts:
         if o in ('-h', '--help'):
-            print __doc__
+            print(__doc__)
             sys.exit(0)
         elif o in '--version':
-            print "sign version %s" % __version__
+            print("sign version %s" % __version__)
             sys.exit(0)
         elif o in ('-k','--key'):
             keyspec = a
@@ -59,6 +68,8 @@ def sign_cmd():
             reference = a
         elif o in ('-o','--output'):
             output = a
+        elif o in ('--xinclude'):
+            do_xinclude = True
         elif o in '--loglevel':
             loglevel = getattr(logging, a.upper(), None)
             if not isinstance(loglevel, int):
@@ -72,8 +83,8 @@ def sign_cmd():
     logging.basicConfig(**log_args)
 
     if keyspec is None:
-        print "Missing -k|--key argument"
-        print __doc__
+        print("Missing -k|--key argument")
+        print(__doc__)
         sys.exit(0)
 
     def _resolve_reference_uri(ref, t): # can probably be improved a bit
@@ -87,6 +98,8 @@ def sign_cmd():
         for f in args:
             with open(f) as xml:
                 t = etree.parse(xml)
+                if do_xinclude:
+                    t.xinclude()
                 reference_uri = _resolve_reference_uri(reference, t)
                 signed = sign(t, keyspec, certspec, reference_uri=reference_uri)
                 if signed:
@@ -109,9 +122,9 @@ def verify_cmd():
     try:
         opts, args = getopt.getopt(sys.argv[1:], 'hc:o:r:',
                                    ['help', 'cert=', 'version', 'output=', 'loglevel=', 'logfile=', 'reference='])
-    except getopt.error, msg:
-        print msg
-        print __doc__
+    except getopt.error as msg:
+        print(msg)
+        print(__doc__)
         sys.exit(2)
 
     output = None
@@ -121,10 +134,10 @@ def verify_cmd():
     logfile = None
     for o, a in opts:
         if o in ('-h', '--help'):
-            print __doc__
+            print(__doc__)
             sys.exit(0)
         elif o in '--version':
-            print "sign version %s" % __version__
+            print("sign version %s" % __version__)
             sys.exit(0)
         elif o in ('-c','--cert'):
             certspec = a
