@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xmlsec"
+version = "1.0.0"
+description = "pure Python XML Security"
+readme = "README.rst"
+license = { text = "BSD" }
+authors = [
+    { name = "Leif Johansson", email = "leifj@sunet.se" }
+]
+keywords = ["xml", "xml-dsig", "security", "digital signature", "rsa"]
+requires-python = ">=3.8"
+
+dependencies = [
+    "defusedxml",
+    "lxml",
+    "pyconfig",
+    "requests",
+    "cryptography",
+    "six",
+    "setuptools>=78.1.1,<82.0.0",
+]
+
+[project.optional-dependencies]
+test = ["PyKCS11", "nose2", "mock"]
+
+[project.urls]
+Homepage = "http://blogs.mnt.se"
+
+[project.scripts]
+xmlsign = "xmlsec.tools:sign_cmd"
+xmlverify = "xmlsec.tools:verify_cmd"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["xmlsec", "xmlsec.*"]

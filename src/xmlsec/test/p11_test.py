@@ -68,16 +68,19 @@ component_path = {
     for component in component_default_paths.keys()
 }
 
-if any(path is None for component, path in component_path.items()):
-    missing = [
-        component
-        for component, path in component_path.items()
-        if path is None
-    ]
-    raise unittest.SkipTest("Required components missing: {}".format(missing))
+# -----------------------------
+# FIX: Replace import‑time SkipTest
+# -----------------------------
+missing_components = [
+    component
+    for component, path in component_path.items()
+    if path is None
+]
+# -----------------------------
+
 
 softhsm_version = 1
-if component_path['SOFTHSM'].endswith('softhsm2-util'):
+if component_path['SOFTHSM'] and component_path['SOFTHSM'].endswith('softhsm2-util'):
     softhsm_version = 2
 
 openssl_version = subprocess.check_output([component_path['OPENSSL'],
@@ -240,7 +243,13 @@ def teardown(self):
     self.p11_test_files = []
 
 
+# -----------------------------
+# FIX: Apply skip decorator to the whole class
+# -----------------------------
+@unittest.skipIf(missing_components, f"Skipping PKCS#11 tests: missing {missing_components}")
 class TestPKCS11(unittest.TestCase):
+# -----------------------------
+
     def setUp(self):
         datadir = pkg_resources.resource_filename(__name__, 'data')
         self.private_keyspec = os.path.join(datadir, 'test.key')
@@ -278,7 +287,6 @@ class TestPKCS11(unittest.TestCase):
             if session is not None:
                 pk11._close_session(session)
 
-    # @unittest.skipIf(component_path['P11_MODULE'] is None, "SoftHSM PKCS11 module not installed")
     @unittest.skip("SoftHSM PKCS11 module does not support 2 sessions")
     def test_two_sessions(self):
         session1 = None
